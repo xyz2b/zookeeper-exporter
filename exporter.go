@@ -19,13 +19,6 @@ type contextValues string
 const (
 	endpointScrapeDuration contextValues = "endpointScrapeDuration"
 	endpointUpMetric       contextValues = "endpointUpMetric"
-	nodeName               contextValues = "node"
-	clusterName            contextValues = "cluster"
-	totalQueues            contextValues = "totalQueues"
-	hostInfo               contextValues = "hostInfo"
-	subSystemName          contextValues = "subSystemName"
-	subSystemID            contextValues = "subSystemID"
-	//extraLabels            contextValues = "extraLabels"
 )
 
 //RegisterExporter makes an exporter available by the provided name.
@@ -40,6 +33,9 @@ func RegisterExporter(name string, f func() Exporter) {
 
 type exporter struct {
 	mutex                        sync.RWMutex
+	upMetric                     *prometheus.GaugeVec
+	endpointUpMetric             *prometheus.GaugeVec
+	endpointScrapeDurationMetric *prometheus.GaugeVec
 	exporter                     map[string]Exporter
 	self                         string
 	lastScrapeOK                 bool
@@ -60,6 +56,9 @@ func newExporter() *exporter {
 	}
 
 	return &exporter{
+		upMetric:                     newGaugeVec("up", "Was the last scrape of rabbitmq successful.", nil),
+		endpointUpMetric:             newGaugeVec("module_up", "Was the last scrape of zookeeper successful per module.", []string{"module"}),
+		endpointScrapeDurationMetric: newGaugeVec("module_scrape_duration_seconds", "Duration of the last scrape in seconds", []string{"module"}),
 		exporter:                     enabledExporter,
 		lastScrapeOK:                 true, //return true after start. Value will be updated with each scraping
 	}
@@ -72,35 +71,42 @@ func (e *exporter) LastScrapeOK() bool {
 }
 
 func (e *exporter) Describe(ch chan<- *prometheus.Desc) {
+	for _, ex := range e.exporter {
+		ex.Describe(ch)
+	}
+
+	e.upMetric.Describe(ch)
+	e.endpointUpMetric.Describe(ch)
+	e.endpointScrapeDurationMetric.Describe(ch)
+	BuildInfo.Describe(ch)
 }
 
 // 实现了prometheus client相关接口的exporter，prometheus会调用这个Collect方法
 // 在该方法内部，在调用各个注册进enabledExporter的对象的Collect方法，然后将ctx传给它们
 func (e *exporter) Collect(ch chan<- prometheus.Metric) {
-	// 定义传给各个模块Collect的上下文
-	ctx := context.Background()
-
-	// 新增: 实例信息(IP:PORT)，来自配置文件的RabbitURL
-	ctx = context.WithValue(ctx, hostInfo, config.ZkHost)
-	// 新增: 子系统名称，来自配置文件的SubsystemName
-	ctx = context.WithValue(ctx, subSystemName, config.SubSystemName)
-	// 新增: 子系统ID，来自配置文件的SubsystemID
-	ctx = context.WithValue(ctx, subSystemID, config.SubSystemID)
-	// 集群名
-	ctx = context.WithValue(ctx, clusterName, config.ClusterName)
-	// 上报的额外标签信息（附加到所有指标之上）
-	//ctx = context.WithValue(ctx, extraLabels, config.ExtraLabels)
-
 	e.mutex.Lock() // To protect metrics from concurrent collects.
 	defer e.mutex.Unlock()
 
 	start := time.Now()
+	allUp := true
 
 	for name, ex := range e.exporter {
-		if err := e.collectWithDuration(ctx, ex, name, ch); err != nil {
+		if err := e.collectWithDuration(ex, name, ch); err != nil {
 			log.WithError(err).Warn("retrieving " + name + " failed")
+			allUp = false
 		}
 	}
+
+	if allUp {
+		gaugeVecWithLabelValues(e.upMetric).Set(1)
+	} else {
+		gaugeVecWithLabelValues(e.upMetric).Set(0)
+	}
+
+	e.lastScrapeOK = allUp
+	e.upMetric.Collect(ch)
+	e.endpointUpMetric.Collect(ch)
+	e.endpointScrapeDurationMetric.Collect(ch)
 
 	BuildInfo.Collect(ch)
 
@@ -108,21 +114,19 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 
 }
 
-func (e *exporter) collectWithDuration(ctx context.Context, ex Exporter, name string, ch chan<- prometheus.Metric) error {
-	node := ""
-	if n, ok := ctx.Value(nodeName).(string); ok {
-		node = n
-	}
-	cluster := ""
-	if n, ok := ctx.Value(clusterName).(string); ok {
-		cluster = n
-	}
+func (e *exporter) collectWithDuration(ex Exporter, name string, ch chan<- prometheus.Metric) error {
+	// 定义传给各个exporter.Collect的上下文(保留以后使用，在本项目中暂时无用)
+	ctx := context.Background()
 
 	startModule := time.Now()
 	err := ex.Collect(ctx, ch)
 
-	if scrapeDuration, ok := ctx.Value(endpointScrapeDuration).(*prometheus.GaugeVec); ok {
-		gaugeVecWithLabelValues(&ctx, scrapeDuration, cluster, node, name).Set(time.Since(startModule).Seconds())
+	gaugeVecWithLabelValues(e.endpointScrapeDurationMetric, name).Set(time.Since(startModule).Seconds())
+
+	if err != nil {
+		gaugeVecWithLabelValues(e.endpointUpMetric, name).Set(0)
+	} else {
+		gaugeVecWithLabelValues(e.endpointUpMetric, name).Set(1)
 	}
 
 	return err

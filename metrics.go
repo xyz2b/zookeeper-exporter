@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -10,14 +9,29 @@ const (
 )
 
 var (
-	extraLabels = []string{"hostname", "subsystemName", "subsystemID", "clusterName"}
+	extraLabelNames = make([]string, len(config.ExtraLabels) + 1)
+	extraLabelValues = make([]string, len(config.ExtraLabels) + 1)
 )
+
+func initExtraLabels() {
+	extraLabelNames = append(extraLabelNames, "node")
+	extraLabelValues = append(extraLabelValues, config.ZkHost)
+
+	if config.ExtraLabels != nil {
+		for _, extraLabel := range config.ExtraLabels {
+			for k, v := range extraLabel {
+				extraLabelNames = append(extraLabelNames, k)
+				extraLabelValues = append(extraLabelValues, v)
+			}
+		}
+	}
+}
 
 func newGaugeVec(metricName string, docString string, labels []string) *prometheus.GaugeVec {
 	if labels != nil {
-		labels = append(labels, extraLabels...)
+		labels = append(labels, extraLabelNames...)
 	} else {
-		labels = extraLabels
+		labels = extraLabelNames
 	}
 
 	return prometheus.NewGaugeVec(
@@ -30,21 +44,11 @@ func newGaugeVec(metricName string, docString string, labels []string) *promethe
 	)
 }
 
-func newGauge(metricName string, docString string) prometheus.Gauge {
-	return prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      metricName,
-			Help:      docString,
-		},
-	)
-}
-
 func newDesc(metricName string, docString string, labels []string) *prometheus.Desc {
 	if labels != nil {
-		labels = append(labels, extraLabels...)
+		labels = append(labels, extraLabelNames...)
 	} else {
-		labels = extraLabels
+		labels = extraLabelNames
 	}
 
 	return prometheus.NewDesc(
@@ -55,83 +59,39 @@ func newDesc(metricName string, docString string, labels []string) *prometheus.D
 }
 
 
-func counterVecWithLabelValues(ctx *context.Context,v *prometheus.CounterVec, lvs ...string) prometheus.Counter {
-	subsystemID := ""
-	if id, ok := (*ctx).Value(subSystemID).(string); ok {
-		subsystemID = id
-	}
-	subsystemName := ""
-	if name, ok := (*ctx).Value(subSystemName).(string); ok {
-		subsystemName = name
-	}
-	hostname := ""
-	if n, ok := (*ctx).Value(hostInfo).(string); ok {
-		hostname = n
-	}
-
-	if lvs != nil {
-		extraLabels := []string{hostname, subsystemName, subsystemID}
-		lvs = append(lvs, extraLabels...)
+func counterVecWithLabelValues(v *prometheus.CounterVec, labelValues ...string) prometheus.Counter {
+	if labelValues != nil {
+		labelValues = append(labelValues, extraLabelValues...)
 	} else {
-		lvs = []string{hostname, subsystemName, subsystemID}
+		labelValues = extraLabelValues
 	}
 
-
-	counter := v.WithLabelValues(lvs...)
+	counter := v.WithLabelValues(labelValues...)
 	return counter
 }
 
-func gaugeVecWithLabelValues(ctx *context.Context, v *prometheus.GaugeVec, lvs ...string) prometheus.Gauge {
-	subsystemID := ""
-	if id, ok := (*ctx).Value(subSystemID).(string); ok {
-		subsystemID = id
-	}
-	subsystemName := ""
-	if name, ok := (*ctx).Value(subSystemName).(string); ok {
-		subsystemName = name
-	}
-	hostname := ""
-	if n, ok := (*ctx).Value(hostInfo).(string); ok {
-		hostname = n
-	}
-
-	if lvs != nil {
-		extraLabels := []string{hostname, subsystemName, subsystemID}
-		lvs = append(lvs, extraLabels...)
+func gaugeVecWithLabelValues(v *prometheus.GaugeVec, labelValues ...string) prometheus.Gauge {
+	if labelValues != nil {
+		labelValues = append(labelValues, extraLabelValues...)
 	} else {
-		lvs = []string{hostname, subsystemName, subsystemID}
+		labelValues = extraLabelValues
 	}
 
-	counter := v.WithLabelValues(lvs...)
+	counter := v.WithLabelValues(labelValues...)
 	return counter
 }
 
 func mustNewConstHistogram(
-	ctx *context.Context,
 	desc *prometheus.Desc,
 	count uint64,
 	sum float64,
 	buckets map[float64]uint64,
 	labelValues ...string,
 ) prometheus.Metric {
-	subsystemID := ""
-	if id, ok := (*ctx).Value(subSystemID).(string); ok {
-		subsystemID = id
-	}
-	subsystemName := ""
-	if name, ok := (*ctx).Value(subSystemName).(string); ok {
-		subsystemName = name
-	}
-	hostname := ""
-	if n, ok := (*ctx).Value(hostInfo).(string); ok {
-		hostname = n
-	}
-
 	if labelValues != nil {
-		extraLabels := []string{hostname, subsystemName, subsystemID}
-		labelValues = append(labelValues, extraLabels...)
+		labelValues = append(labelValues, extraLabelValues...)
 	} else {
-		labelValues = []string{hostname, subsystemName, subsystemID}
+		labelValues = extraLabelValues
 	}
 
 	metric := prometheus.MustNewConstHistogram(
@@ -140,25 +100,11 @@ func mustNewConstHistogram(
 	return metric
 }
 
-func mustNewConstMetric(ctx *context.Context, desc *prometheus.Desc, valueType prometheus.ValueType, value float64, labelValues ...string) prometheus.Metric {
-	subsystemID := ""
-	if id, ok := (*ctx).Value(subSystemID).(string); ok {
-		subsystemID = id
-	}
-	subsystemName := ""
-	if name, ok := (*ctx).Value(subSystemName).(string); ok {
-		subsystemName = name
-	}
-	hostname := ""
-	if n, ok := (*ctx).Value(hostInfo).(string); ok {
-		hostname = n
-	}
-
+func mustNewConstMetric(desc *prometheus.Desc, valueType prometheus.ValueType, value float64, labelValues ...string) prometheus.Metric {
 	if labelValues != nil {
-		extraLabels := []string{hostname, subsystemName, subsystemID}
-		labelValues = append(labelValues, extraLabels...)
+		labelValues = append(labelValues, extraLabelValues...)
 	} else {
-		labelValues = []string{hostname, subsystemName, subsystemID}
+		labelValues = extraLabelValues
 	}
 
 	metric := prometheus.MustNewConstMetric(desc, valueType, value, labelValues...)

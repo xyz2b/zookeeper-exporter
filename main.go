@@ -47,6 +47,8 @@ func main() {
 		panic(err)
 	}
 
+	initExtraLabels()
+
 	exporter := newExporter()
 	prometheus.MustRegister(exporter)
 

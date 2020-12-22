@@ -3,17 +3,17 @@ package main
 import "github.com/prometheus/client_golang/prometheus"
 
 var (
-	//Version of Rabbitmq Exporter is set during build.
+	//Version of Zookeeper Exporter is set during build.
 	Version string
-	//Revision of Rabbitmq Exporter is set during build.
+	//Revision of Zookeeper Exporter is set during build.
 	Revision string
-	//Branch of Rabbitmq Exporter is set during build.
+	//Branch of Zookeeper Exporter is set during build.
 	Branch string
-	//BuildDate of Rabbitmq Exporter is set during build.
+	//BuildDate of Zookeeper Exporter is set during build.
 	BuildDate string
 )
 
-//BuildInfo is a metric with a constant '1' value labeled by version, revision, branch and build date on which the rabbitmq_exporter was built
+//BuildInfo is a metric with a constant '1' value labeled by version, revision, branch and build date on which the zookeeper_exporter was built
 var BuildInfo *prometheus.GaugeVec
 
 func init() {
@@ -26,7 +26,7 @@ func newBuildInfo() *prometheus.GaugeVec {
 			Name: "zookeeper_exporter_build_info",
 			Help: "A metric with a constant '1' value labeled by version, revision, branch and build date on which the zookeeper_exporter was built.",
 		},
-		[]string{"version", "revision", "branch", "builddate"},
+		[]string{"version", "revision", "branch", "build_date"},
 	)
 	metric.WithLabelValues(Version, Revision, Branch, BuildDate).Set(1)
 	return metric

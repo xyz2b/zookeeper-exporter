@@ -18,10 +18,7 @@ var (
 		PublishAddr:        "",
 		OutputFormat:       "TTY", //JSON
 		EnabledExporters:   []string{"node", "overview"},
-		SubSystemName:      "",
-		SubSystemID:        "",
-		ClusterName: 		"",
-		//ExtraLabels:		[]map[string]string{},
+		ExtraLabels:		nil,
 	}
 )
 
@@ -32,15 +29,12 @@ type zookeeperExporterConfig struct {
 	PublishAddr              string              `json:"publish_addr"`
 	OutputFormat             string              `json:"output_format"`
 	EnabledExporters		 []string            `json:"enabled_exporters"`
-	SubSystemName            string              `json:"sub_system_name"`
-	SubSystemID              string              `json:"sub_system_id"`
-	ClusterName				 string				 `json:"cluster_name"`
-	//ExtraLabels            []map[string]string `json:"extra_labels"`
+	ExtraLabels              []map[string]string `json:"extra_labels"`
 }
 
-func initConfigFromFile(config_file string) error {
+func initConfigFromFile(configFile string) error {
 	config = zookeeperExporterConfig{}
-	err := gonfig.GetConf(config_file, &config)
+	err := gonfig.GetConf(configFile, &config)
 	if err != nil {
 		return err
 	}
@@ -83,16 +77,7 @@ func initConfig() {
 		config.Timeout = t
 	}
 
-
-	if subSystemName := os.Getenv("SUB_SYSTEM_NAME"); subSystemName != "" {
-		config.SubSystemName = subSystemName
-	}
-
-	if subSystemID := os.Getenv("SUB_SYSTEM_ID"); subSystemID != "" {
-		config.SubSystemID = subSystemID
-	}
-
-	if ClusterName := os.Getenv("CLUSTER_NAME"); ClusterName != "" {
-		config.ClusterName = ClusterName
-	}
+	//if extraLabels := os.Getenv("EXTRA_LABELS"); extraLabels != "" {
+	//
+	//}
 }
