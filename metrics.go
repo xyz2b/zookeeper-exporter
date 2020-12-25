@@ -9,14 +9,18 @@ const (
 )
 
 var (
-	extraLabelNames = make([]string, len(config.ExtraLabels) + 1)
-	extraLabelValues = make([]string, len(config.ExtraLabels) + 1)
+	extraLabelNames []string
+	extraLabelValues []string
 )
 
-func initExtraLabels() {
-	extraLabelNames = append(extraLabelNames, "node")
-	extraLabelValues = append(extraLabelValues, config.ZkHost)
+type MetricMap map[string]string
 
+type StatsInfo struct {
+	labels  map[string]string
+	metrics MetricMap
+}
+
+func initExtraLabels() {
 	if config.ExtraLabels != nil {
 		for _, extraLabel := range config.ExtraLabels {
 			for k, v := range extraLabel {
@@ -27,11 +31,11 @@ func initExtraLabels() {
 	}
 }
 
-func newGaugeVec(metricName string, docString string, labels []string) *prometheus.GaugeVec {
-	if labels != nil {
-		labels = append(labels, extraLabelNames...)
+func newGaugeVec(metricName string, docString string, labelNames ...string) *prometheus.GaugeVec {
+	if labelNames != nil {
+		labelNames = append(labelNames, extraLabelNames...)
 	} else {
-		labels = extraLabelNames
+		labelNames = extraLabelNames
 	}
 
 	return prometheus.NewGaugeVec(
@@ -40,21 +44,38 @@ func newGaugeVec(metricName string, docString string, labels []string) *promethe
 			Name:      metricName,
 			Help:      docString,
 		},
-		labels,
+		labelNames,
 	)
 }
 
-func newDesc(metricName string, docString string, labels []string) *prometheus.Desc {
-	if labels != nil {
-		labels = append(labels, extraLabelNames...)
+func newCounterVec(metricName string, docString string, labelNames ...string) *prometheus.CounterVec {
+	if labelNames != nil {
+		labelNames = append(labelNames, extraLabelNames...)
 	} else {
-		labels = extraLabelNames
+		labelNames = extraLabelNames
+	}
+
+	return prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: namespace,
+			Name:      metricName,
+			Help:      docString,
+		},
+		labelNames,
+	)
+}
+
+func newDesc(metricName string, docString string, labelNames ...string) *prometheus.Desc {
+	if labelNames != nil {
+		labelNames = append(labelNames, extraLabelNames...)
+	} else {
+		labelNames = extraLabelNames
 	}
 
 	return prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", metricName),
 		docString,
-		labels,
+		labelNames,
 		nil)
 }
 

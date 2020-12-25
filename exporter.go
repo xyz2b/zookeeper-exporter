@@ -19,6 +19,7 @@ type contextValues string
 const (
 	endpointScrapeDuration contextValues = "endpointScrapeDuration"
 	endpointUpMetric       contextValues = "endpointUpMetric"
+	nodeName               contextValues = "node"
 )
 
 //RegisterExporter makes an exporter available by the provided name.
@@ -36,6 +37,7 @@ type exporter struct {
 	upMetric                     *prometheus.GaugeVec
 	endpointUpMetric             *prometheus.GaugeVec
 	endpointScrapeDurationMetric *prometheus.GaugeVec
+	confExporter             	 *exporterConf
 	exporter                     map[string]Exporter
 	self                         string
 	lastScrapeOK                 bool
@@ -56,9 +58,10 @@ func newExporter() *exporter {
 	}
 
 	return &exporter{
-		upMetric:                     newGaugeVec("up", "Was the last scrape of rabbitmq successful.", nil),
-		endpointUpMetric:             newGaugeVec("module_up", "Was the last scrape of zookeeper successful per module.", []string{"module"}),
-		endpointScrapeDurationMetric: newGaugeVec("module_scrape_duration_seconds", "Duration of the last scrape in seconds", []string{"module"}),
+		upMetric:                     newGaugeVec("exporter_up", "Was the last scrape of zookeeper successful.", "node"),
+		endpointUpMetric:             newGaugeVec("exporter_module_up", "Was the last scrape of zookeeper successful per module.", "node", "module"),
+		endpointScrapeDurationMetric: newGaugeVec("module_scrape_duration_seconds", "Duration of the last scrape in seconds", "node", "module"),
+		confExporter:            	  newExporterConf(),
 		exporter:                     enabledExporter,
 		lastScrapeOK:                 true, //return true after start. Value will be updated with each scraping
 	}
@@ -71,6 +74,7 @@ func (e *exporter) LastScrapeOK() bool {
 }
 
 func (e *exporter) Describe(ch chan<- *prometheus.Desc) {
+	e.confExporter.Describe(ch)
 	for _, ex := range e.exporter {
 		ex.Describe(ch)
 	}
@@ -90,6 +94,11 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 	start := time.Now()
 	allUp := true
 
+	if err := e.collectWithDuration(e.confExporter, "conf", ch); err != nil {
+		log.WithError(err).Warn("retrieving overview failed")
+		allUp = false
+	}
+
 	for name, ex := range e.exporter {
 		if err := e.collectWithDuration(ex, name, ch); err != nil {
 			log.WithError(err).Warn("retrieving " + name + " failed")
@@ -98,9 +107,9 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	if allUp {
-		gaugeVecWithLabelValues(e.upMetric).Set(1)
+		gaugeVecWithLabelValues(e.upMetric, e.confExporter.NodeInfo().Node).Set(1)
 	} else {
-		gaugeVecWithLabelValues(e.upMetric).Set(0)
+		gaugeVecWithLabelValues(e.upMetric, e.confExporter.NodeInfo().Node).Set(0)
 	}
 
 	e.lastScrapeOK = allUp
@@ -115,18 +124,19 @@ func (e *exporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (e *exporter) collectWithDuration(ex Exporter, name string, ch chan<- prometheus.Metric) error {
-	// 定义传给各个exporter.Collect的上下文(保留以后使用，在本项目中暂时无用)
+	// 定义传给各个exporter.Collect的上下文
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, nodeName, e.confExporter.NodeInfo().Node)
 
 	startModule := time.Now()
 	err := ex.Collect(ctx, ch)
 
-	gaugeVecWithLabelValues(e.endpointScrapeDurationMetric, name).Set(time.Since(startModule).Seconds())
+	gaugeVecWithLabelValues(e.endpointScrapeDurationMetric, e.confExporter.NodeInfo().Node, name).Set(time.Since(startModule).Seconds())
 
 	if err != nil {
-		gaugeVecWithLabelValues(e.endpointUpMetric, name).Set(0)
+		gaugeVecWithLabelValues(e.endpointUpMetric, e.confExporter.NodeInfo().Node, name).Set(0)
 	} else {
-		gaugeVecWithLabelValues(e.endpointUpMetric, name).Set(1)
+		gaugeVecWithLabelValues(e.endpointUpMetric, e.confExporter.NodeInfo().Node, name).Set(1)
 	}
 
 	return err

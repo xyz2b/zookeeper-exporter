@@ -41,12 +41,6 @@ func main() {
 	}
 
 	initLogger()
-
-	err = initClient()
-	if err != nil {
-		panic(err)
-	}
-
 	initExtraLabels()
 
 	exporter := newExporter()
@@ -57,7 +51,6 @@ func main() {
 		"REVISION":   Revision,
 		"BRANCH":     Branch,
 		"BUILD_DATE": BuildDate,
-		//		"RABBIT_PASSWORD": config.RABBIT_PASSWORD,
 	}).Info("Starting RabbitMQ exporter")
 
 	log.WithFields(log.Fields{
@@ -66,9 +59,7 @@ func main() {
 		"RABBIT_URL":          config.ZkHost,
 		"OUTPUT_FORMAT":       config.OutputFormat,
 		"TIMEOUT":      	   config.Timeout,
-		"SubSystemName":       config.SubSystemName,
-		"SubsystemID":         config.SubSystemID,
-		//		"RABBIT_PASSWORD": config.RABBIT_PASSWORD,
+		"ExtraLabels":		   config.ExtraLabels,
 	}).Info("Active Configuration")
 
 	handler := http.NewServeMux()

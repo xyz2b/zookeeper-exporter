@@ -17,7 +17,7 @@ var (
 		PublishPort:        "9419",
 		PublishAddr:        "",
 		OutputFormat:       "TTY", //JSON
-		EnabledExporters:   []string{"node", "overview"},
+		EnabledExporters:   []string{"ruok", "mntr", "cons"},
 		ExtraLabels:		nil,
 	}
 )
