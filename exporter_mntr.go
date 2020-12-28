@@ -12,8 +12,12 @@ func init() {
 	RegisterExporter("mntr", newExporterMntr)
 }
 
-var (
-	mntrGaugeVec = map[string]*prometheus.GaugeVec{
+type exporterMntr struct {
+	mntrGauge		map[string]*prometheus.GaugeVec
+}
+
+func newExporterMntr() Exporter {
+	mntrGaugeVecActual := map[string]*prometheus.GaugeVec{
 		"zk_num_alive_connections":            newGaugeVec("connections", "the number of connections.", "node"),
 		"zk_server_state":					   newGaugeVec("server_is_leader", "server mode(follower/leader).", "node"),
 		"zk_min_latency":					   newGaugeVec("min_latency", "Minimum Latency.", "node"),
@@ -31,15 +35,8 @@ var (
 		"zk_last_proposal_size":			   newGaugeVec("last_proposal_size", "The size of the last Proposal message.", "node"),
 		"zk_max_proposal_size":				   newGaugeVec("max_proposal_size", "The size of the maximum Proposal message.", "node"),
 		"zk_min_proposal_size":				   newGaugeVec("min_proposal_size", "The size of the minimum Proposal message.", "node"),
+		"zk_cnt_node_changed_watch_count":     newGaugeVec("cnt_node_changed_watch_count", "the changed watch count", "node"),
 	}
-)
-
-type exporterMntr struct {
-	mntrGauge		map[string]*prometheus.GaugeVec
-}
-
-func newExporterMntr() Exporter {
-	mntrGaugeVecActual := mntrGaugeVec
 
 	return &exporterMntr{
 		mntrGauge: mntrGaugeVecActual,

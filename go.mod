@@ -1,4 +1,4 @@
-module zookeeper-exporter
+module zookeeper_exporter
 
 go 1.14
 

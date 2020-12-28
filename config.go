@@ -33,7 +33,7 @@ type zookeeperExporterConfig struct {
 }
 
 func initConfigFromFile(configFile string) error {
-	config = zookeeperExporterConfig{}
+	config = defaultConfig
 	err := gonfig.GetConf(configFile, &config)
 	if err != nil {
 		return err

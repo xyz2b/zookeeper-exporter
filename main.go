@@ -30,7 +30,7 @@ func initLogger() {
 }
 
 func main() {
-	var configFile = flag.String("config-file", "conf/rabbitmq.conf", "path to json config")
+	var configFile = flag.String("config-file", "conf/zookeeper_exporter.json", "path to json config")
 	flag.Parse()
 
 	err := initConfigFromFile(*configFile)           //Try parsing config file

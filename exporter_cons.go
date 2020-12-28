@@ -12,8 +12,12 @@ func init() {
 	RegisterExporter("cons", newExporterCons)
 }
 
-var (
-	consGaugeVec = map[string]*prometheus.GaugeVec{
+type exporterCons struct {
+	consGauge		map[string]*prometheus.GaugeVec
+}
+
+func newExporterCons() Exporter {
+	consaugeVecActual := map[string]*prometheus.GaugeVec{
 		"queued":            newGaugeVec("client_queued", "Client queue.", "node", "client"),
 		"recved":            newGaugeVec("client_recved", "Number of packets received by the client.", "node", "client"),
 		"sent":            newGaugeVec("client_sent", "Number of packets sent by the client.", "node", "client"),
@@ -29,14 +33,6 @@ var (
 		"avglat":            newGaugeVec("client_avglat", "Client Average delay.", "node", "client"),
 		"maxlat":            newGaugeVec("client_maxlat", "Client Maximum delay.", "node", "client"),
 	}
-)
-
-type exporterCons struct {
-	consGauge		map[string]*prometheus.GaugeVec
-}
-
-func newExporterCons() Exporter {
-	consaugeVecActual := consGaugeVec
 
 	return &exporterCons{
 		consGauge: consaugeVecActual,

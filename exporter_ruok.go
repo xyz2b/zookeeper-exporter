@@ -11,18 +11,14 @@ func init() {
 	RegisterExporter("ruok", newExporterRuok)
 }
 
-var (
-	ruokGaugeVec = map[string]*prometheus.GaugeVec{
-		"ruok":            newGaugeVec("up", "the status of zookeeper service.", "node"),
-	}
-)
-
 type exporterRuok struct {
 	ruokGauge		map[string]*prometheus.GaugeVec
 }
 
 func newExporterRuok() Exporter {
-	ruokaugeVecActual := ruokGaugeVec
+	ruokaugeVecActual := map[string]*prometheus.GaugeVec{
+		"ruok":            newGaugeVec("up", "the status of zookeeper service.", "node"),
+	}
 
 	return &exporterRuok{
 		ruokGauge: ruokaugeVecActual,

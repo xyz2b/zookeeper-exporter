@@ -13,12 +13,6 @@ func init() {
 	//RegisterExporter("overview", newExporterOverview)
 }
 
-var (
-	confGaugeVec = map[string]*prometheus.GaugeVec{
-		"maxClientCnxns":            newGaugeVec("max_connections", "max of connections.", "node"),
-	}
-)
-
 type exporterConf struct {
 	confGauge 	map[string]*prometheus.GaugeVec
 	nodeInfo        NodeInfo
@@ -30,7 +24,9 @@ type NodeInfo struct {
 }
 
 func newExporterConf() *exporterConf {
-	confaugeVecActual := confGaugeVec
+	confaugeVecActual := map[string]*prometheus.GaugeVec{
+		"maxClientCnxns":            newGaugeVec("max_connections", "max of connections.", "node"),
+	}
 
 	return &exporterConf{
 		confGauge: confaugeVecActual,
